@@ -118,25 +118,20 @@ class SendResponseFilter extends ZuulFilter {
         }
     }
 
-    def writeResponse(InputStream zin, OutputStream out) {
+    def void writeResponse(InputStream zin, OutputStream out) throws Exception {
         byte[] bytes = new byte[INITIAL_STREAM_BUFFER_SIZE.get()];
         int bytesRead = -1;
         while ((bytesRead = zin.read(bytes)) != -1) {
-//            if (Debug.debugRequest() && !Debug.debugRequestHeadersOnly()) {
-//                Debug.addRequestDebug("OUTBOUND: <  " + new String(bytes, 0, bytesRead));
-//            }
-
             try {
                 out.write(bytes, 0, bytesRead);
                 out.flush();
-            } catch (IOException e) {
-                //ignore
-                e.printStackTrace()
             }
-
+            catch (IOException ex) {
+                // ignore
+            }
             // doubles buffer size if previous read filled it
             if (bytesRead == bytes.length) {
-                bytes = new byte[bytes.length * 2]
+                bytes = new byte[bytes.length * 2];
             }
         }
     }
@@ -176,6 +171,7 @@ class SendResponseFilter extends ZuulFilter {
 
         RequestContext ctx = RequestContext.getCurrentContext()
         Integer contentLength = ctx.getOriginContentLength()
+        
 
         // only inserts Content-Length if origin provides it and origin response is not gzipped
         if (SET_CONTENT_LENGTH.get()) {

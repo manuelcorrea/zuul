@@ -22,10 +22,7 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import com.google.common.reflect.TypeToken;
 import com.netflix.client.ClientException;
@@ -41,6 +38,7 @@ import com.netflix.hystrix.HystrixCommandGroupKey;
 import com.netflix.hystrix.HystrixCommandKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 import com.netflix.hystrix.HystrixCommandProperties.ExecutionIsolationStrategy;
+import com.netflix.loadbalancer.ILoadBalancer;
 import com.netflix.niws.client.http.RestClient;
 import com.netflix.zuul.constants.ZuulConstants;
 import com.netflix.zuul.context.Debug;
@@ -48,7 +46,7 @@ import com.netflix.zuul.context.RequestContext;
 
 
 @SuppressWarnings("deprecation")
-public class RibbonCommand extends HystrixCommand<HttpResponse> {
+public abstract class RibbonCommand extends HystrixCommand<HttpResponse> {
 
 	private RestClient restClient;
 
@@ -67,15 +65,23 @@ public class RibbonCommand extends HystrixCommand<HttpResponse> {
 	public RibbonCommand(RestClient restClient, Verb verb, String uri,
 			Boolean retryable,
 			Map<String, String> headers,
-            Map<String, String> params, InputStream requestEntity)
+            Map<String, String> params,
+            InputStream requestEntity,
+            String url1,
+            String url2
+    )
 			throws URISyntaxException {
-		this("default", restClient, verb, uri, retryable , headers, params, requestEntity);
+		this("default", restClient, verb, uri, retryable , headers, params, requestEntity, url1, url2);
 	}
 
 	public RibbonCommand(String commandKey, RestClient restClient, Verb verb, String uri,
 			Boolean retryable,
             Map<String, String> headers,
-            Map<String, String> params, InputStream requestEntity)
+            Map<String, String> params, 
+            InputStream requestEntity,
+            String url1,
+            String url2
+            )
 			throws URISyntaxException {
 		super(getSetter(commandKey));
 		this.restClient = restClient;
@@ -106,92 +112,13 @@ public class RibbonCommand extends HystrixCommand<HttpResponse> {
 		return forward();
 	}
 
-    @Override
-    protected HttpResponse getFallback() {
-        HttpResponse resp = new HttpResponse() {
-            @Override
-            public int getStatus() {
-                return 500;
-            }
-
-            @Override
-            public String getStatusLine() {
-                return null;
-            }
-
-            @Override
-            public Map<String, Collection<String>> getHeaders() {
-                return null;
-            }
-
-            @Override
-            public HttpHeaders getHttpHeaders() {
-                return null;
-            }
-
-            @Override
-            public void close() {
-
-            }
-
-            @Override
-            public InputStream getInputStream() {
-                
-                String str = "{\"error\" : true }";
-                 InputStream stream = new ByteArrayInputStream(str.getBytes());
-                return stream;
-            }
-
-            @Override
-            public boolean hasEntity() {
-                return true;
-            }
-
-            @Override
-            public <T> T getEntity(Class<T> aClass) throws Exception {
-                return null;
-            }
-
-            @Override
-            public <T> T getEntity(Type type) throws Exception {
-                return null;
-            }
-
-            @Override
-            public <T> T getEntity(TypeToken<T> typeToken) throws Exception {
-                return null;
-            }
-
-            @Override
-            public Object getPayload() throws ClientException {
-                return null;
-            }
-
-            @Override
-            public boolean hasPayload() {
-                return false;
-            }
-
-            @Override
-            public boolean isSuccess() {
-                return true;
-            }
-
-            @Override
-            public URI getRequestedURI() {
-                return null;
-            }
-        };
-        
-        return resp;
-    }
+    
+    abstract ILoadBalancer getLoadBalancerClient();
 
     private HttpResponse forward() throws Exception {
-        Debug.addRequestDebug("in forward ---");
         RequestContext context = RequestContext.getCurrentContext();
 		Builder builder = HttpRequest.newBuilder().verb(this.verb).uri(this.uri)
 				.entity(this.requestEntity);
-
 
 		if(retryable != null) {
 			builder.setRetriable(retryable);
@@ -207,8 +134,9 @@ public class RibbonCommand extends HystrixCommand<HttpResponse> {
 			builder.queryParams(name, value);
 		}
 		HttpRequest httpClientRequest = builder.build();
-        Debug.addRequestDebug("ibefore exec ---");
-
+        
+        this.restClient.setLoadBalancer(getLoadBalancerClient());
+        
         HttpResponse response = this.restClient
 				.executeWithLoadBalancer(httpClientRequest);
         Debug.addRequestDebug("after exec ---");

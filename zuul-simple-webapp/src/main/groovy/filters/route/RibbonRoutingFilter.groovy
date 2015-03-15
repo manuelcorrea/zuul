@@ -21,7 +21,9 @@ import com.netflix.config.ConfigurationManager
 import com.netflix.loadbalancer.ILoadBalancer
 import com.netflix.loadbalancer.LoadBalancerBuilder
 import com.netflix.zuul.context.Debug
+import demo.hystrix.FirstLevelRibbonCommand
 import demo.hystrix.RibbonCommand
+import org.apache.http.Header
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -36,7 +38,9 @@ import com.netflix.hystrix.exception.HystrixRuntimeException;
 import com.netflix.niws.client.http.RestClient;
 import com.netflix.zuul.ZuulFilter;
 import com.netflix.zuul.context.RequestContext;
-import com.netflix.zuul.exception.ZuulException;
+import com.netflix.zuul.exception.ZuulException
+
+import java.util.zip.GZIPInputStream;
 
 
 public class RibbonRoutingFilter extends ZuulFilter {
@@ -77,14 +81,7 @@ public class RibbonRoutingFilter extends ZuulFilter {
         Boolean retryable = (Boolean) context.get("retryable");
 
         ConfigurationManager.loadPropertiesFromResources("sample-client.properties");
-
-        ILoadBalancer loadBalancer;
-        List<Server> serverList =  Lists.newArrayList(
-                new Server("www.careerbuilder.com", 80) );
-        loadBalancer = LoadBalancerBuilder.newBuilder().buildFixedServerListLoadBalancer(serverList);
         RestClient restClient = (RestClient) ClientFactory.getNamedClient("sample-client");
-        restClient.setLoadBalancer(loadBalancer);
-
         Debug.addRequestDebug("CLIETN NAME==> "+restClient.getClientName());
 
         String uri = request.getRequestURI();
@@ -114,8 +111,11 @@ public class RibbonRoutingFilter extends ZuulFilter {
                                  Map<String, String> headers, Map<String, String> params,
                                  InputStream requestEntity) throws Exception {
 
-        RibbonCommand command = new RibbonCommand(service, restClient, verb, uri, retryable,
-                headers, params, requestEntity);
+        String host1  = "localhost";
+        String host2 = "localhost";
+        
+        RibbonCommand command = new FirstLevelRibbonCommand(service, restClient, verb, uri, retryable,
+                headers, params, requestEntity, host1, host2);
         try {
             HttpResponse response = command.execute();
 
@@ -183,7 +183,21 @@ public class RibbonRoutingFilter extends ZuulFilter {
     private void setResponse(HttpResponse resp) throws ClientException, IOException {
         RequestContext context = RequestContext.getCurrentContext();
         RequestContext.getCurrentContext().setResponseStatusCode(resp.getStatus());
-        RequestContext.getCurrentContext().setResponseDataStream(!resp.hasEntity() ? null : resp.getInputStream());
+        //RequestContext.getCurrentContext().setResponseDataStream(!resp.hasEntity() ? null : resp.getInputStream());
+
+        byte[] origBytes = resp.getInputStream().bytes
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(origBytes)
+        InputStream inputStream = byteStream
+        if (RequestContext.currentContext.responseGZipped) {
+            inputStream = new GZIPInputStream(byteStream);
+        }
+
+        context.setResponseDataStream(new ByteArrayInputStream(origBytes))
+
+        if (resp.getHttpHeaders().containsHeader("content-length")){
+            //context.addZuulResponseHeader("content-length", resp.getHttpHeaders().getFirstValue("content-length"));
+        }
+
     }
 
 }
