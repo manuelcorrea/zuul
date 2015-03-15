@@ -16,13 +16,17 @@
 
 package route
 
+import com.google.common.collect.Lists
 import com.netflix.config.ConfigurationManager
+import com.netflix.loadbalancer.ILoadBalancer
+import com.netflix.loadbalancer.LoadBalancerBuilder
 import com.netflix.zuul.context.Debug
 import demo.hystrix.RibbonCommand
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.netflix.loadbalancer.Server;
 
 import com.netflix.client.ClientException;
 import com.netflix.client.ClientFactory;
@@ -73,13 +77,14 @@ public class RibbonRoutingFilter extends ZuulFilter {
         Boolean retryable = (Boolean) context.get("retryable");
 
         ConfigurationManager.loadPropertiesFromResources("sample-client.properties");
-        ConfigurationManager.getConfigInstance().setProperty(
-                "sample-client.ribbon.listOfServers", "http://www.localhost123.com");
-        
-        Debug.addRequestDebug("PROP NAME==> "+ConfigurationManager.getConfigInstance().getProperty("sample-client.ribbon.listOfServers"));
 
+        ILoadBalancer loadBalancer;
+        List<Server> serverList =  Lists.newArrayList(
+                new Server("www.careerbuilder.com", 80) );
+        loadBalancer = LoadBalancerBuilder.newBuilder().buildFixedServerListLoadBalancer(serverList);
         RestClient restClient = (RestClient) ClientFactory.getNamedClient("sample-client");
-        
+        restClient.setLoadBalancer(loadBalancer);
+
         Debug.addRequestDebug("CLIETN NAME==> "+restClient.getClientName());
 
         String uri = request.getRequestURI();
