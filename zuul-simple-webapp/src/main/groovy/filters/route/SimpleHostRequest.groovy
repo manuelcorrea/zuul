@@ -115,7 +115,8 @@ class SimpleHostRoutingFilter extends ZuulFilter {
     }
 
     boolean shouldFilter() {
-        return RequestContext.currentContext.getRouteHost() != null && RequestContext.currentContext.sendZuulResponse()
+        //return RequestContext.currentContext.getRouteHost() != null && RequestContext.currentContext.sendZuulResponse()
+        return false
     }
 
     private static final void loadClient() {
