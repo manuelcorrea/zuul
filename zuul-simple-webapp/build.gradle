@@ -31,6 +31,8 @@ dependencies {
     compile 'com.thoughtworks.xstream:xstream:1.4.5'
     compile 'com.sun.jersey:jersey-server:1.11'
     compile 'com.sun.jersey:jersey-bundle:1.19'
+    compile 'com.netflix.hystrix:hystrix-metrics-event-stream:1.4.0'
+    
 }
 
 eclipse {
