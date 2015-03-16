@@ -114,7 +114,7 @@ public class RibbonRoutingFilter extends ZuulFilter {
         String host1  = "localhost";
         String host2 = "localhost";
         
-        RibbonCommand command = new FirstLevelRibbonCommand(service, restClient, verb, uri, retryable,
+        RibbonCommand command = new FirstLevelRibbonCommand("PonyService", restClient, verb, uri, retryable,
                 headers, params, requestEntity, host1, host2);
         try {
             HttpResponse response = command.execute();
