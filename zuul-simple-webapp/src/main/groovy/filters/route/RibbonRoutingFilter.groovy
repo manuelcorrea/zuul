@@ -21,6 +21,7 @@ import com.netflix.config.ConfigurationManager
 import com.netflix.loadbalancer.ILoadBalancer
 import com.netflix.loadbalancer.LoadBalancerBuilder
 import com.netflix.zuul.context.Debug
+import com.netflix.zuul.util.HTTPRequestUtils
 import demo.hystrix.FirstLevelRibbonCommand
 import demo.hystrix.RibbonCommand
 import org.apache.http.Header
@@ -63,7 +64,7 @@ public class RibbonRoutingFilter extends ZuulFilter {
     @Override
     public boolean shouldFilter() {
         RequestContext ctx = RequestContext.getCurrentContext();
-        return true;
+        return RequestContext.currentContext.sendZuulResponse();
     }
 
     @Override
@@ -90,7 +91,7 @@ public class RibbonRoutingFilter extends ZuulFilter {
         }
         // remove double slashes
         uri = uri.replace("//", "/");
-        String service = (String) context.get("serviceId");
+        String service = (String) context.get("service");
 
         try {
             HttpResponse response = forward(restClient, service, verb, uri, retryable, headers, params,
@@ -111,14 +112,15 @@ public class RibbonRoutingFilter extends ZuulFilter {
                                  Map<String, String> headers, Map<String, String> params,
                                  InputStream requestEntity) throws Exception {
 
-        String host1  = "localhost";
-        String host2 = "localhost";
-        
-        RibbonCommand command = new FirstLevelRibbonCommand("PonyService", restClient, verb, uri, retryable,
-                headers, params, requestEntity, host1, host2);
+        RequestContext ctx = RequestContext.getCurrentContext()
+        String host1  = ctx.get("host1");
+        String host2 = ctx.get("host2");
+        String cache = ctx.get("cache")
+
+        RibbonCommand command = new FirstLevelRibbonCommand(service, restClient, verb, uri, retryable,
+                headers, params, requestEntity, host1, host2, cache);
         try {
             HttpResponse response = command.execute();
-
             return response;
         }
         catch (HystrixRuntimeException ex) {
@@ -137,13 +139,19 @@ public class RibbonRoutingFilter extends ZuulFilter {
 
     }
 
-    private Map<String, String> revertHeaders(
+    private void setHeaders(
             Map<String, Collection<String>> headers) {
-        Map<String, String> map = new HashMap<String, String>();
-//		for (Entry<String, Collection<String>> entry : headers.entrySet()) {
-//			map.put(entry.getKey(), new ArrayList<String>(entry.getValue()));
-//		}
-        return map;
+        if(headers!=null){
+            RequestContext ctx =  RequestContext.getCurrentContext();
+            for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+                Collection<String> collection = entry.getValue();
+                Object value = collection;
+                if (collection.size() < 2) {
+                    value = collection.isEmpty() ? "" : collection.iterator().next();
+                }
+                ctx.addZuulResponseHeader(entry.getKey(), value);
+            }
+        }
     }
 
     private InputStream getRequestBody(HttpServletRequest request) {
@@ -183,21 +191,32 @@ public class RibbonRoutingFilter extends ZuulFilter {
     private void setResponse(HttpResponse resp) throws ClientException, IOException {
         RequestContext context = RequestContext.getCurrentContext();
         RequestContext.getCurrentContext().setResponseStatusCode(resp.getStatus());
-        //RequestContext.getCurrentContext().setResponseDataStream(!resp.hasEntity() ? null : resp.getInputStream());
+       
+        //RequestContext.getCurrentContext().setResponseStatusCode(resp.getStatus());
 
+        setHeaders(resp.headers);
+        Debug.addRequestDebug("headers1 ==> "+context.getZuulRequestHeaders());
+
+        boolean isOriginResponseGzipped = false
+
+//        for (Header h : resp.getHeaders(CONTENT_ENCODING)) {
+//            if (HTTPRequestUtils.getInstance().isGzipped(h.value)) {
+//                isOriginResponseGzipped = true;
+//                break;
+//            }
+//        }
+        context.setResponseGZipped(false);
+        
         byte[] origBytes = resp.getInputStream().bytes
         ByteArrayInputStream byteStream = new ByteArrayInputStream(origBytes)
         InputStream inputStream = byteStream
         if (RequestContext.currentContext.responseGZipped) {
             inputStream = new GZIPInputStream(byteStream);
         }
-
+        
         context.setResponseDataStream(new ByteArrayInputStream(origBytes))
-
-        if (resp.getHttpHeaders().containsHeader("content-length")){
-            //context.addZuulResponseHeader("content-length", resp.getHttpHeaders().getFirstValue("content-length"));
-        }
-
+        
+        
     }
 
 }

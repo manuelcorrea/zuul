@@ -52,9 +52,10 @@ class SendResponseFilter extends ZuulFilter {
     }
 
     boolean shouldFilter() {
-        return !RequestContext.currentContext.getZuulResponseHeaders().isEmpty() ||
-                RequestContext.currentContext.getResponseDataStream() != null ||
-                RequestContext.currentContext.responseBody != null
+//        return !RequestContext.currentContext.getZuulResponseHeaders().isEmpty() ||
+//                RequestContext.currentContext.getResponseDataStream() != null ||
+//                RequestContext.currentContext.responseBody != null
+        return true
     }
 
     Object run() {
@@ -149,29 +150,22 @@ class SendResponseFilter extends ZuulFilter {
             debugHeader += "[[[${it}]]]";
         }
 
-        /*
-        rd = (List<String>) RequestContext.getCurrentContext().get("requestDebug");
-        rd?.each {
-            debugHeader += "[[[REQUEST_DEBUG::${it}]]]";
-        }
-        */
-
         if (INCLUDE_DEBUG_HEADER.get()) servletResponse.addHeader("X-Zuul-Debug-Header", debugHeader)
 
-        if (Debug.debugRequest()) {
-            zuulResponseHeaders?.each { Pair<String, String> it ->
+        Debug.addRequestDebug("************** SETTING HEADERS ******")
+        Debug.addRequestDebug("headers "+zuulResponseHeaders)
+
+        zuulResponseHeaders?.each { Pair<String, String> it ->
                 servletResponse.addHeader(it.first(), it.second())
-                Debug.addRequestDebug("OUTBOUND: <  " + it.first() + ":" + it.second())
-            }
-        } else {
-            zuulResponseHeaders?.each { Pair<String, String> it ->
-                servletResponse.addHeader(it.first(), it.second())
-            }
+            
+            Debug.addRequestDebug("*headers "+it.first()+" = "+ it.second())
+
         }
 
+        //Debug.addRequestDebug(servletResponse.)
+        
         RequestContext ctx = RequestContext.getCurrentContext()
         Integer contentLength = ctx.getOriginContentLength()
-        
 
         // only inserts Content-Length if origin provides it and origin response is not gzipped
         if (SET_CONTENT_LENGTH.get()) {

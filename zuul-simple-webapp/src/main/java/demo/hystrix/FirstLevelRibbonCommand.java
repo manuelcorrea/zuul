@@ -28,21 +28,25 @@ public class FirstLevelRibbonCommand extends RibbonCommand {
     private InputStream requestEntity;
     private String host1;
     private String host2;
+    String service;
+    String cache;
+    
     
     public FirstLevelRibbonCommand(RestClient restClient, HttpRequest.Verb verb,
                                    String uri, Boolean retryable, Map<String, String> headers,
                                    Map<String, String> params, InputStream requestEntity,
-                                   String host1, String host2
+                                   String host1, String host2, String cache
     ) throws URISyntaxException {
-        this("default", restClient, verb, uri, retryable, headers, params, requestEntity, host1, host2);
+        this("default", restClient, verb, uri, retryable, headers, params, requestEntity, host1, host2, cache);
     }
 
     public FirstLevelRibbonCommand(String commandKey, RestClient restClient, HttpRequest.Verb verb, 
                                    String uri, Boolean retryable, Map<String, String> headers, 
                                    Map<String, String> params, InputStream requestEntity,
-                                   String host1, String host2
+                                   String host1, String host2, String cache
                                    ) throws URISyntaxException {
-        super(commandKey, restClient, verb, uri, retryable, headers, params, requestEntity, host1, host2);
+        super(commandKey+"-A", restClient, verb, uri, retryable, headers, params, requestEntity, host1, host2);
+        this.service = commandKey;
         this.restClient = restClient;
         this.verb = verb;
         this.uri = new URI(uri);
@@ -52,6 +56,7 @@ public class FirstLevelRibbonCommand extends RibbonCommand {
         this.requestEntity = requestEntity;
         this.host1 = host1;
         this.host2 = host2;
+        this.cache = cache;
     }
 
     @Override
@@ -68,10 +73,10 @@ public class FirstLevelRibbonCommand extends RibbonCommand {
     protected HttpResponse getFallback() {
         try {
             SecondLevelRibbonCommand fallback = new SecondLevelRibbonCommand(
-                    "secondlevel",
+                    this.service+"-Fallback",
                     this.restClient,
                     verb, uri.toString(),
-                    retryable, headers, params, requestEntity, host1, host2
+                    retryable, headers, params, requestEntity, host1, host2, cache
             );
             return fallback.execute();
             

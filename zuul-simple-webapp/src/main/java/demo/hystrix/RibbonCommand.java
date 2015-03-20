@@ -103,7 +103,7 @@ public abstract class RibbonCommand extends HystrixCommand<HttpResponse> {
 				.withExecutionIsolationStrategy(ExecutionIsolationStrategy.SEMAPHORE)
 				.withExecutionIsolationSemaphoreMaxConcurrentRequests(value.get());
 		return Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("RibbonCommand"))
-				.andCommandKey(HystrixCommandKey.Factory.asKey(commandKey + "RibbonCommand"))
+				.andCommandKey(HystrixCommandKey.Factory.asKey(commandKey))
 				.andCommandPropertiesDefaults(setter);
 	}
 
@@ -142,6 +142,11 @@ public abstract class RibbonCommand extends HystrixCommand<HttpResponse> {
         Debug.addRequestDebug("after exec ---");
 
         context.set("ribbonResponse", response);
+        
+        if(response.getStatus() != 200){
+            throw new Exception("Service Error != 200");
+        }
+        
 		return response;
 	}
 

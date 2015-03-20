@@ -41,8 +41,23 @@ class PreDecorationFilter extends ZuulFilter {
     Object run() {
         RequestContext ctx = RequestContext.getCurrentContext()
 
+        //all microservices lives in localhost
+        ctx.put("host1", "localhost")
+        ctx.put("host2", "localhost")
+        
         // sets origin
-        ctx.setRouteHost(new URL("http://apache.org/"));
+        if(ctx.getRequest().getRequestURI().matches("/[a-zA-Z]*[/]?service/jobs[?]?.*")) {
+            ctx.put("service", "jobs")
+            ctx.put("cache", "[{\"jobid\":\"123\", \"resume\": \"Im a job cached\"}]")
+            
+        }else if(ctx.getRequest().getRequestURI().matches("/[a-zA-Z]*[/]?service/resumes[?]?.*")) {
+            ctx.put("service", "resumes")
+            ctx.put("cache", "[{\"name\":\"Im a cache\", \"resume\": \"Im a resume cached\"}]")
+            
+        }else{
+            ctx.setSendZuulResponse(false)
+            
+        }
 
         // sets custom header to send to the origin
         ctx.addOriginResponseHeader("cache-control", "max-age=3600");

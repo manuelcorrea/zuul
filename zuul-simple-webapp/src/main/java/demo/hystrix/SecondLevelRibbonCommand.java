@@ -16,9 +16,7 @@ import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by mcorrea on 3/15/15.
@@ -34,19 +32,20 @@ public class SecondLevelRibbonCommand extends RibbonCommand {
     private InputStream requestEntity;
     private String host1;
     private String host2;
+    String cache;
     
     public SecondLevelRibbonCommand(RestClient restClient, HttpRequest.Verb verb,
                                     String uri, Boolean retryable, Map<String, String> headers,
                                     Map<String, String> params, InputStream requestEntity,
-                                    String host1, String host2
+                                    String host1, String host2, String cache
     ) throws URISyntaxException {
-        this("default", restClient, verb, uri, retryable, headers, params, requestEntity, host1, host2);
+        this("default", restClient, verb, uri, retryable, headers, params, requestEntity, host1, host2, cache);
     }
 
     public SecondLevelRibbonCommand(String commandKey, RestClient restClient, HttpRequest.Verb verb,
                                     String uri, Boolean retryable, Map<String, String> headers,
                                     Map<String, String> params, InputStream requestEntity,
-                                    String host1, String host2
+                                    String host1, String host2, String cache
     ) throws URISyntaxException {
         super(commandKey, restClient, verb, uri, retryable, headers, params, requestEntity, host1, host2);
         this.restClient = restClient;
@@ -58,6 +57,7 @@ public class SecondLevelRibbonCommand extends RibbonCommand {
         this.requestEntity = requestEntity;
         this.host1 = host1;
         this.host2 = host2;
+        this.cache = cache;
     }
 
     @Override
@@ -76,7 +76,7 @@ public class SecondLevelRibbonCommand extends RibbonCommand {
 
     @Override
     protected HttpResponse getFallback() {
-        final String str = "cccccccccccc";
+        final String str = cache;
         final  InputStream stream = new ByteArrayInputStream(str.getBytes());
         HttpResponse resp = new HttpResponse() {
 
@@ -92,7 +92,9 @@ public class SecondLevelRibbonCommand extends RibbonCommand {
 
             @Override
             public Map<String, Collection<String>> getHeaders() {
-                return null;
+                Map<String, Collection<String>> headers = new HashMap<String, Collection<String>>();
+                headers.put("Content-Type", Lists.newArrayList("application/json"));
+                return headers;
             }
 
             @Override
