@@ -75,6 +75,7 @@ sourceSets {
 }
 
 jettyRun.contextPath = '/'
+jettyRun.httpPort = 9090
 
 jettyRun.doFirst {
     System.setProperty("zuul.filter.root", "src/main/groovy/filters")
