@@ -1,21 +1,27 @@
 apply plugin: 'war'
 apply plugin: 'jetty'
-apply plugin: 'eclipse'
-apply plugin: 'cobertura'
-apply plugin: 'groovy'
-apply plugin: 'cobertura'
 
 dependencies {
+    repositories {
+        mavenCentral()
+    }
+    
     compile project(":zuul-core")
 
-    groovy "org.codehaus.groovy:groovy-all:2.2.2"
     compile 'org.apache.httpcomponents:httpclient:4.3.2'
     providedCompile 'javax.servlet:servlet-api:2.5'
     compile 'junit:junit-dep:4.10'
+    
+    dependencies {
+        classpath "net.saliman:gradle-cobertura-plugin:2.2.7"
+    }
+}
+plugins {
+    id 'net.saliman.cobertura' version '2.2.7'
 }
 
 eclipse {
-    classpath {
+  classpath {
         downloadSources = true
         downloadJavadoc = true
     }
@@ -48,11 +54,4 @@ sourceSets {
             srcDir 'src/main/groovy/filters'
         }
     }
-}
-
-cobertura {
-    sourceDirs = sourceSets.main.groovy.srcDirs
-    format = 'html'
-    includes = ['**/*.java', '**/*.groovy']
-    excludes = []
 }
